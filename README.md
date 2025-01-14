@@ -34,7 +34,7 @@ A arquitetura do pipeline segue o diagrama abaixo:
 Os seguintes requisitos devem ser atendidos:
 
 1. Realizar scraping de dados do site da B3.
-2. Armazenar os dados brutos no bucket `Raw` em formato CSV.
+2. Armazenar os dados brutos no bucket `Raw` em formato Parquet.
 3. Configurar um bucket S3 que acione uma função Lambda ao receber novos arquivos.
 4. Implementar uma função Lambda que dispare um Glue Job.
 5. Configurar o Glue Job para realizar as seguintes transformações:
@@ -106,8 +106,6 @@ Forneça:
 
 ## Scraping de Dados
 
----
-
 ### Descrição
 
 Esta etapa é responsável por extrair dados da B3 utilizando a API disponível e fazer o upload para o bucket `Raw` no S3. O processo utiliza Python e bibliotecas como `requests` e `pandas`.
@@ -137,54 +135,6 @@ pip install boto3 pandas selenium pydantic
 
 - **Descrição**: Responsável por acionar o Glue Job ao detectar novos arquivos no bucket `Raw`.
 - **Tecnologia**: Implementada em Python.
-- **Código de Exemplo**:
-
-```python
-import json
-import time
-
-import boto3
-
-def lambda_handler(event, context):
-    client = boto3.client('glue')
-
-    # Nome do Glue Job configurado
-    glue_job_name = 'your-glue-job-name'
-
-    try:
-        # Inicia o job no Glue
-        response = client.start_job_run(JobName=glue_job_name)
-        job_run_id = response['JobRunId']
-        print(f"Glue Job started successfully with JobRunId: {job_run_id}")
-
-        # Verifica o status do Glue Job
-        while True:
-            job_status = client.get_job_run(
-                JobName=glue_job_name, RunId=job_run_id)
-            state = job_status['JobRun']['JobRunState']
-            print(f"Current Job State: {state}")
-
-            if state in ['SUCCEEDED']:
-                print("Glue Job completed successfully.")
-                break
-            elif state in ['FAILED', 'STOPPED', 'TIMEOUT']:
-                raise Exception(f"Glue Job failed with state: {state}")
-
-            # Espera antes de verificar novamente
-            time.sleep(10)
-
-        return {
-            'statusCode': 200,
-            'body': json.dumps(f"Glue Job {job_run_id} completed successfully.")
-        }
-
-    except Exception as e:
-        print(f"Error triggering Glue Job: {str(e)}")
-        return {
-            'statusCode': 500,
-            'body': json.dumps(f"Error triggering Glue Job: {str(e)}")
-        }
-```
 
 ### Glue Job
 
@@ -200,7 +150,6 @@ def lambda_handler(event, context):
 
 - **Descrição**: Permite consultas SQL nos dados refinados.
 - **Configurações**: Utiliza o Glue Catalog como metadados.
-
 
 ---
 
